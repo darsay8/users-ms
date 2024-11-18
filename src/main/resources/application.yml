@@ -14,7 +14,7 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.OracleDialect
     hibernate:
-      ddl-auto: create
+      ddl-auto: create-drop
 server:
   port: ${PORT}
 logging:
