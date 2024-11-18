@@ -3,10 +3,12 @@ package dev.rm.controller;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import dev.rm.factory.UserFactory;
 import dev.rm.model.Role;
 import dev.rm.model.User;
 import dev.rm.service.UserService;
 import dev.rm.utils.PasswordUtil;
+import dev.rm.validation.ValidationChain;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.HashMap;
@@ -18,10 +20,12 @@ import java.util.Map;
 @RequestMapping("/api")
 public class UserController {
 
-    private UserService userService;
+    private final UserService userService;
+    private final ValidationChain validationChain;
 
-    public UserController(UserService userService) {
+    public UserController(UserService userService, ValidationChain validationChain) {
         this.userService = userService;
+        this.validationChain = validationChain;
     }
 
     @GetMapping("/users")
@@ -50,15 +54,20 @@ public class UserController {
 
     @PostMapping("/users")
     public ResponseEntity<User> createUser(@RequestBody User user) {
-        if (user.getUsername() == null || user.getEmail() == null || user.getPassword() == null) {
-            log.warn("Creation failed: username, email, or password is missing.");
-            return ResponseEntity.badRequest().build();
-        }
-
         try {
-            User createdUser = userService.createUser(user);
-            log.info("Created user with id {}", createdUser.getId());
+
+            if (user.getRole() == null) {
+                user.setRole(Role.USER);
+            }
+
+            validationChain.validate(user);
+
+            User newUser = UserFactory.createUser(user.getUsername(), user.getEmail(), user.getPassword(),
+                    user.getRole());
+
+            User createdUser = userService.createUser(newUser);
             return ResponseEntity.status(201).body(createdUser);
+
         } catch (RuntimeException e) {
             log.error("Error creating user: {}", e.getMessage());
             return ResponseEntity.badRequest().build();
