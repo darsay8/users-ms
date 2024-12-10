@@ -12,6 +12,7 @@ import dev.rm.validation.ValidationChain;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -127,7 +128,7 @@ public class UserController {
         }
     }
 
-    @PostMapping("/auth")
+    @PostMapping("/auth/login")
     public ResponseEntity<Map<String, Object>> authenticate(@RequestBody User user) {
         String email = user.getEmail();
         String password = user.getPassword();
@@ -136,14 +137,32 @@ public class UserController {
             User authenticatedUser = userService.authenticate(email, password);
             log.info("User '{}' authenticated successfully.", email);
 
+            Map<String, Object> userResponse = new LinkedHashMap<>();
+            userResponse.put("id", authenticatedUser.getId());
+            userResponse.put("username", authenticatedUser.getUsername());
+            userResponse.put("email", authenticatedUser.getEmail());
+            userResponse.put("role", authenticatedUser.getRole());
+
             Map<String, Object> response = new HashMap<>();
             response.put("message", "Authentication successful");
-            response.put("user", authenticatedUser);
+            response.put("user", userResponse);
 
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
             log.error("Authentication failed for user '{}': {}", email, e.getMessage());
             return ResponseEntity.status(401).body(Map.of("message", "Authentication failed"));
+        }
+    }
+
+    @PostMapping("/auth/register")
+    public ResponseEntity<Map<String, Object>> registerUser(@RequestBody User user) {
+        try {
+            User registeredUser = userService.createUser(user);
+            return ResponseEntity.ok(Map.of(
+                    "message", "User registered successfully",
+                    "user", registeredUser));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(400).body(Map.of("message", e.getMessage()));
         }
     }
 
